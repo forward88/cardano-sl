@@ -6,11 +6,14 @@ module Pos.Diffusion.Types
     , Diffusion (..)
     , SubscriptionStatus (..)
     , dummyDiffusionLayer
+    , StreamEntry (..)
     ) where
 
 import           Universum
+import           Control.Concurrent.STM           (TBQueue)
 import           Data.Map.Strict                  (Map)
 import qualified Data.Map.Strict                  as Map
+
 import           Formatting                       (Format)
 import           Pos.Communication.Types.Protocol (NodeId)
 import           Pos.Core.Block                   (Block, BlockHeader, MainBlockHeader)
@@ -33,6 +36,8 @@ instance Semigroup SubscriptionStatus where
     Subscribed <> _     = Subscribed
     Subscribing <> s    = s
 
+data StreamEntry = StreamEnd | StreamBlock Block
+
 -- | The interface to a diffusion layer, i.e. some component which takes care
 -- of getting data in from and pushing data out to a network.
 data Diffusion m = Diffusion
@@ -43,6 +48,13 @@ data Diffusion m = Diffusion
                          -> HeaderHash
                          -> [HeaderHash]
                          -> m (OldestFirst [] Block)
+    , streamBlocks       :: forall t .
+                            ( Monoid t)
+                         => NodeId
+                         -> HeaderHash
+                         -> [HeaderHash]
+                         -> (TBQueue StreamEntry -> m t)
+                         -> m t
       -- | This is needed because there's a security worker which will request
       -- tip-of-chain from the network if it determines it's very far behind.
     , requestTip          :: m (Map NodeId (m BlockHeader))
@@ -104,6 +116,7 @@ dummyDiffusionLayer = do
     dummyDiffusion subscriptionStatus = Diffusion
         { getBlocks          = \_ _ _ -> pure (OldestFirst [])
         , requestTip         = pure mempty
+        , streamBlocks        = \_ _ _ _ -> pure mempty
         , announceBlockHeader = \_ -> pure ()
         , sendTx             = \_ -> pure True
         , sendUpdateProposal = \_ _ _ -> pure ()
