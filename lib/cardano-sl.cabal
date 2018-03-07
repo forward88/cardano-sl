@@ -126,6 +126,7 @@ library
 
   build-depends:        MonadRandom
                       , QuickCheck
+                      , async
                       , aeson >= 0.11.2.1
                       , ansi-terminal
                       , ansi-wl-pprint
