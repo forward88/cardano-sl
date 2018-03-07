@@ -192,7 +192,7 @@ instance HasConfiguration => MonadDB WalletMode where
   dbPutSerBlunds = dbPutSerBlundsRealDefault
 
 instance ( HasConfiguration
-         , HasInfraConfiguration
+         , HasNtpConfiguration
          , MonadSlotsData ctx WalletMode
          ) => MonadSlots ctx WalletMode where
   getCurrentSlot           = getCurrentSlotSimple
@@ -212,7 +212,7 @@ instance MonadFormatPeers WalletMode where
 instance {-# OVERLAPPING #-} CanJsonLog WalletMode where
   jsonLog = jsonLogDefault
 
-instance (HasConfiguration, HasInfraConfiguration, HasTxpConfiguration, HasCompileInfo)
+instance (HasConfiguration, HasNtpConfiguration, HasTxpConfiguration, HasCompileInfo)
       => MonadTxpLocal WalletMode where
   txpNormalize = txNormalize
   txpProcessTx = txProcessTransaction

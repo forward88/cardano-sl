@@ -50,7 +50,7 @@ import           Pos.DB.Class (MonadDB (..), MonadDBRead (..))
 import           Pos.DB.DB (gsAdoptedBVDataDefault)
 import           Pos.DB.Rocks (dbDeleteDefault, dbGetDefault, dbIterSourceDefault, dbPutDefault,
                                dbWriteBatchDefault)
-import           Pos.Infra.Configuration (HasInfraConfiguration)
+import           Pos.Infra.Configuration (HasNtpConfiguration)
 import           Pos.KnownPeers (MonadFormatPeers (..))
 import           Pos.Launcher (HasConfigurations)
 import           Pos.Network.Types (HasNodeType (..))
@@ -225,7 +225,7 @@ type MonadFullWalletWebMode ctx m =
 -- Instances for WalletWebMode
 ----------------------------------------------------------------------------
 
-instance (HasConfiguration, HasInfraConfiguration, MonadSlotsData ctx WalletWebMode)
+instance (HasConfiguration, HasNtpConfiguration, MonadSlotsData ctx WalletWebMode)
       => MonadSlots ctx WalletWebMode
   where
     getCurrentSlot = getCurrentSlotSimple
@@ -258,7 +258,7 @@ instance HasConfiguration => MonadGState WalletWebMode where
 instance HasConfiguration => HasAdoptedBlockVersionData WalletWebMode where
     adoptedBVData = gsAdoptedBVData
 
-instance (HasConfiguration, HasInfraConfiguration, HasCompileInfo)
+instance (HasConfiguration, HasNtpConfiguration, HasCompileInfo)
        => MonadBListener WalletWebMode where
     onApplyBlocks = onApplyBlocksWebWallet
     onRollbackBlocks = onRollbackBlocksWebWallet
@@ -267,7 +267,7 @@ instance MonadUpdates WalletWebMode where
     waitForUpdate = waitForUpdateWebWallet
     applyLastUpdate = applyLastUpdateWebWallet
 
-instance (HasConfiguration, HasSscConfiguration, HasInfraConfiguration) =>
+instance (HasConfiguration, HasSscConfiguration, HasNtpConfiguration) =>
          MonadBlockchainInfo WalletWebMode where
     networkChainDifficulty = networkChainDifficultyWebWallet
     localChainDifficulty = localChainDifficultyWebWallet
@@ -312,7 +312,7 @@ instance HasConfiguration => MonadBalances WalletWebMode where
     getOwnUtxos = getOwnUtxosDefault
     getBalance = getBalanceDefault
 
-instance (HasConfiguration, HasSscConfiguration, HasTxpConfiguration, HasInfraConfiguration, HasCompileInfo)
+instance (HasConfiguration, HasSscConfiguration, HasTxpConfiguration, HasNtpConfiguration, HasCompileInfo)
         => MonadTxHistory WalletWebMode where
     getBlockHistory = getBlockHistoryDefault
     getLocalHistory = getLocalHistoryDefault
@@ -324,7 +324,7 @@ instance MonadFormatPeers WalletWebMode where
 
 type instance MempoolExt WalletWebMode = WalletMempoolExt
 
-instance (HasConfiguration, HasInfraConfiguration, HasTxpConfiguration, HasCompileInfo) =>
+instance (HasConfiguration, HasNtpConfiguration, HasTxpConfiguration, HasCompileInfo) =>
          MonadTxpLocal WalletWebMode where
     txpNormalize = txpNormalizeWebWallet
     txpProcessTx = txpProcessTxWebWallet
