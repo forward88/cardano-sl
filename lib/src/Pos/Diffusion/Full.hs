@@ -83,6 +83,7 @@ data FullDiffusionConfiguration = FullDiffusionConfiguration
     , fdcRecoveryHeadersMessage :: !Word
     , fdcLastKnownBlockVersion  :: !BlockVersion
     , fdcConvEstablishTimeout   :: !Microsecond
+    , fdcStreamWindow           :: !Word32
     }
 
 data RunFullDiffusionInternals d = RunFullDiffusionInternals
@@ -186,6 +187,7 @@ diffusionLayerFullExposeInternals runIO
         protocolConstants = fdcProtocolConstants fdconf
         lastKnownBlockVersion = fdcLastKnownBlockVersion fdconf
         recoveryHeadersMessage = fdcRecoveryHeadersMessage fdconf
+        streamWindow = fdcStreamWindow fdconf
 
     -- Subscription status.
     subscriptionStatus <- newTVarIO MS.empty
@@ -363,7 +365,7 @@ diffusionLayerFullExposeInternals runIO
                      -> [HeaderHash]
                      -> (STM.TBQueue StreamEntry -> d t)
                      -> d t
-        streamBlocks = Diffusion.Block.streamBlocks logic enqueue
+        streamBlocks = Diffusion.Block.streamBlocks logic streamWindow enqueue
 
         requestTip :: d (Map NodeId (d BlockHeader))
         requestTip = Diffusion.Block.requestTip logic enqueue recoveryHeadersMessage
