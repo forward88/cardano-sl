@@ -171,6 +171,7 @@ library
                       , neat-interpolation
                       , optparse-applicative
                       , parsec
+                      , pipes
                       , plutus-prototype
                       , pvss
                       , random

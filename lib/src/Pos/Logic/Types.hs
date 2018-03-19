@@ -12,6 +12,7 @@ import           Universum
 
 import           Data.Default (def)
 import           Data.Tagged (Tagged)
+import           Pipes (Producer)
 
 import           Pos.Block.Logic (GetHashesRangeError, GetHeadersFromManyToError)
 import           Pos.Communication (NodeId, TxMsgContents)
@@ -30,6 +31,7 @@ data Logic m = Logic
       ourStakeholderId   :: StakeholderId
       -- | Get a block, perhaps from a database.
     , getBlock           :: HeaderHash -> m (Maybe Block)
+    , streamBlocks       :: HeaderHash -> Producer Block m ()
       -- | Get a block header.
     , getBlockHeader     :: HeaderHash -> m (Maybe BlockHeader)
       -- TODO CSL-2089 use conduits in this and the following methods
@@ -138,7 +140,7 @@ data LogicLayer m = LogicLayer
 
 -- | A diffusion layer that does nothing, and probably crashes the program.
 dummyLogicLayer
-    :: ( Applicative m )
+    :: ( Monad m )
     => LogicLayer m
 dummyLogicLayer = LogicLayer
     { runLogicLayer = identity
@@ -147,10 +149,13 @@ dummyLogicLayer = LogicLayer
 
   where
 
-    dummyLogic :: Applicative m => Logic m
+    -- | Monad m is needed for 'streamBlocks', as 'pure' from pipes requires
+    -- Monad m
+    dummyLogic :: Monad m => Logic m
     dummyLogic = Logic
         { ourStakeholderId   = error "dummy: no stakeholder id"
         , getBlock           = \_ -> pure (error "dummy: can't get block")
+        , streamBlocks       = \_ -> pure ()
         , getBlockHeader     = \_ -> pure (error "dummy: can't get header")
         , getBlockHeaders    = \_ _ _ -> pure (error "dummy: can't get block headers")
         , getLcaMainChain    = \_ -> pure (OldestFirst [])
