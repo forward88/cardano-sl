@@ -273,9 +273,7 @@ getBlocks logic recoveryHeadersMessage enqueue nodeId tipHeaderHash checkpoints 
 
 streamBlocks
     :: forall d t .
-       ( Monoid t
-       , DiffusionWorkMode d
-       )
+       ( DiffusionWorkMode d )
     => Logic d
     -> Word32
     -> EnqueueMsg d

@@ -365,8 +365,7 @@ diffusionLayerFullExposeInternals runIO
         getBlocks = Diffusion.Block.getBlocks logic recoveryHeadersMessage enqueue
 
         streamBlocks :: forall t .
-                        ( Monoid t)
-                     => NodeId
+                        NodeId
                      -> HeaderHash
                      -> [HeaderHash]
                      -> (STM.TBQueue StreamEntry -> d t)
