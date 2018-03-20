@@ -129,11 +129,12 @@ action opts@AuxxOptions {..} command = do
                           , acTempDbUsed = tempDbUsed }
                   lift $ runReaderT auxxAction auxxContext
           let vssSK = unsafeFromJust $ npUserSecret nodeParams ^. usVss
-          let sscParams = CLI.gtSscParams cArgs vssSK (npBehaviorConfig nodeParams)
-          bracketNodeResources nodeParams sscParams txpGlobalSettings initNodeDBs $ \nr ->
+              sscParams = CLI.gtSscParams cArgs vssSK (npBehaviorConfig nodeParams)
+          bracketNodeResources nodeParams sscParams txpGlobalSettings initNodeDBs $ \nr -> do
+              let elim = runProduction . elimRealMode nr . toRealMode
               elimRealMode nr $ toRealMode $
                   logicLayerFull jsonLog $ \logicLayer ->
-                      diffusionLayerFull (runProduction . elimRealMode nr . toRealMode) fdconf (npNetworkConfig nodeParams) Nothing (logic logicLayer) $ \diffusionLayer -> do
+                      liftIO $ diffusionLayerFull elim fdconf (npNetworkConfig nodeParams) Nothing (logic logicLayer) $ \diffusionLayer -> elim $ do
                           let modifier = if aoStartMode == WithNode then runNodeWithSinglePlugin nr else identity
                               (ActionSpec auxxModeAction, _) = modifier (auxxPlugin opts command)
                           runLogicLayer logicLayer (runDiffusionLayer diffusionLayer (auxxModeAction (diffusion diffusionLayer)))

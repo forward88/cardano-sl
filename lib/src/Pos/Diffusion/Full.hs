@@ -16,19 +16,21 @@ import           Nub (ordNub)
 import           Universum
 
 import qualified Control.Concurrent.STM as STM
+import           Control.Exception (SomeAsyncException, fromException, throwIO)
 import           Control.Monad.Fix (MonadFix)
 import qualified Data.Map as M
 import qualified Data.Map.Strict as MS
 import           Data.Time.Units (Microsecond, Millisecond, Second, convertUnit)
-import           Formatting (Format)
+import           Formatting (Format, shown, (%), sformat)
 import           Mockable (withAsync, link)
 import qualified Network.Broadcast.OutboundQueue as OQ
 import           Network.Broadcast.OutboundQueue.Types (MsgType (..), Origin (..))
 import           Network.Transport.Abstract (Transport)
+import           Network.Transport.Concrete (concrete)
 import           Node (Node, NodeAction (..), simpleNodeEndPoint, NodeEnvironment (..), defaultNodeEnvironment, node)
 import           Node.Conversation (Converse, converseWith, Conversation)
 import           System.Random (newStdGen)
-import           System.Wlog (WithLogger, CanLog, usingLoggerName)
+import           System.Wlog (CanLog, usingLoggerName, logError)
 
 import           Pos.Block.Network (MsgGetHeaders, MsgHeaders, MsgGetBlocks, MsgBlock, MsgStream,
                                     MsgStreamBlock)
@@ -104,20 +106,17 @@ data FullDiffusionInternals d = FullDiffusionInternals
 -- The 'NetworkConfig's topology is also used to fill in various options
 -- related to subscription, health status reporting, etc.
 diffusionLayerFull
-    :: forall d m x .
+    :: forall d x .
        ( DiffusionWorkMode d
        , MonadFix d
-       , MonadIO m
-       , MonadMask m
-       , WithLogger m
        )
     => (forall y . d y -> IO y)
     -> FullDiffusionConfiguration
     -> NetworkConfig KademliaParams
     -> Maybe (EkgNodeMetrics d)
     -> Logic d
-    -> (DiffusionLayer d -> m x)
-    -> m x
+    -> (DiffusionLayer d -> IO x)
+    -> IO x
 diffusionLayerFull runIO fdconf networkConfig mEkgNodeMetrics logic k = do
     -- Make the outbound queue using network policies.
     oq :: OQ.OutboundQ (EnqueuedConversation d) NodeId Bucket <-
@@ -129,11 +128,18 @@ diffusionLayerFull runIO fdconf networkConfig mEkgNodeMetrics logic k = do
         mSubscribers = topologySubscribers topology
         healthStatus = topologyHealthStatus topology oq
         mKademliaParams = topologyRunKademlia topology
-    bracketTransportTCP (fdcConvEstablishTimeout fdconf) (ncTcpAddr networkConfig) $ \transport -> do
+        -- exception handler for the TCP transport server when 'accept' fails:
+        -- ignore it unless it's async, so that the server does die if the
+        -- 'accept' fails (for instance because it ran out of file descriptors).
+        logTransportException :: SomeException -> IO ()
+        logTransportException err = case fromException err of
+            Just (_ :: SomeAsyncException) -> throwIO err
+            Nothing -> usingLoggerName "transport" $ logError $ sformat ("transport exception: "%shown) err
+    bracketTransportTCP (fdcConvEstablishTimeout fdconf) (ncTcpAddr networkConfig) logTransportException $ \transport -> do
         (fullDiffusion, internals) <-
             diffusionLayerFullExposeInternals runIO
                                               fdconf
-                                              transport
+                                              (concrete transport)
                                               oq
                                               (ncDefaultPort networkConfig)
                                               mSubscriptionWorker

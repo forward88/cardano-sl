@@ -137,7 +137,7 @@ runServer
     -> m t
 runServer runIO NodeParams {..} ekgNodeMetrics _ (ActionSpec act) =
     exitOnShutdown . logicLayerFull jsonLog $ \logicLayer ->
-        diffusionLayerFull runIO fdconf npNetworkConfig (Just ekgNodeMetrics) (logic logicLayer) $ \diffusionLayer -> do
+        liftIO $ diffusionLayerFull runIO fdconf npNetworkConfig (Just ekgNodeMetrics) (logic logicLayer) $ \diffusionLayer -> runIO $ do
             when npEnableMetrics (registerEkgMetrics ekgStore)
             runLogicLayer logicLayer $
                 runDiffusionLayer diffusionLayer $
