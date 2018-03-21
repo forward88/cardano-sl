@@ -17,6 +17,7 @@ import qualified Cardano.Wallet.API.Development as Dev
 import           Cardano.Wallet.API.Development.Helpers (developmentOnly)
 import           Cardano.Wallet.API.Response (WalletResponse, single)
 import           Cardano.Wallet.API.V1.Migration
+import           Cardano.Wallet.API.V1.Types (V1(..))
 import           Cardano.Wallet.Server.CLI (RunMode (..))
 
 import qualified Pos.Configuration as V0
@@ -48,13 +49,13 @@ handlers naturalTransformation runMode =
                       => ServerT Dev.API m
             handlers' =    getWalletState runMode
                       :<|> deleteSecretKeys runMode
-
+                      :<|> throwSomething runMode
 
 getWalletState :: ( MonadThrow m, V0.MonadWalletDBRead ctx m)
                => RunMode
-               -> m (WalletResponse V0.WalletStateSnapshot)
+               -> m (WalletResponse (V1 V0.WalletStateSnapshot))
 getWalletState runMode =
-    developmentOnly runMode (single <$> V0.dumpState)
+    developmentOnly runMode (fmap V1 . single <$> V0.dumpState)
 
 deleteSecretKeys :: ( V0.HasNodeConfiguration
                     , V0.MonadWalletDB ctx m
@@ -65,3 +66,7 @@ deleteSecretKeys :: ( V0.HasNodeConfiguration
                  -> m NoContent
 deleteSecretKeys runMode =
     developmentOnly runMode (V0.deleteAllSecretKeys >> V0.testReset >> return NoContent)
+
+throwSomething :: MonadThrow m => RunMode -> m NoContent
+throwSomething runMode =
+    developmentOnly runMode $ error "A generic error happened in dev mode"

@@ -79,7 +79,8 @@ walletServeWebFull
     -> NetworkAddress          -- ^ IP and Port to listen
     -> Maybe TlsParams
     -> WalletWebMode ()
-walletServeWebFull diffusion ntpStatus debug = walletServeImpl action
+walletServeWebFull diffusion ntpStatus debug address mTlsParams =
+    walletServeImpl action address mTlsParams Nothing
   where
     action :: WalletWebMode Application
     action = do
