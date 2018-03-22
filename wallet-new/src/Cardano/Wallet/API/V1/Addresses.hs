@@ -20,4 +20,8 @@ type API = Tags '["Addresses"] :>
                        :> "validity"
                        :> Summary "Checks the validity of an address."
                        :> Get '[ValidJSON] (WalletResponse AddressValidity)
+      :<|> "addresses" :> "external"
+                       :> ReqBody '[ValidJSON] NewExternalAddress
+                       :> Summary "Creates a new Address in external wallet."
+                       :> Post '[ValidJSON] (WalletResponse WalletAddress)
       )

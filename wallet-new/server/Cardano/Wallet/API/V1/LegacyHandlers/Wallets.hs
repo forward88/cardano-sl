@@ -29,6 +29,7 @@ handlers = (newWallet
     :<|> deleteWallet
     :<|> getWallet
     :<|> updateWallet
+    :<|> newExternalWallet
     ) :<|> Accounts.handlers
 
 -- | Creates a new or restores an existing @wallet@ given a 'NewWallet' payload.
@@ -80,3 +81,13 @@ updateWallet
     -> WalletUpdate
     -> MonadV1 (WalletResponse Wallet)
 updateWallet _ _ = single <$> (liftIO $ generate arbitrary)
+
+-- | Creates a new or restores an existing external @wallet@ given a 'NewExternalWallet' payload.
+-- Returns to the client the representation of the created or restored
+-- wallet in the 'Wallet' type.
+newExternalWallet
+    :: (MonadThrow m, MonadWalletLogic ctx m)
+    => NewExternalWallet
+    -> m (WalletResponse Wallet)
+newExternalWallet _ =
+    single <$> (liftIO $ generate arbitrary)

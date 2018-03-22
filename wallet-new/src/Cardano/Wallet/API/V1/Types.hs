@@ -24,6 +24,7 @@ module Cardano.Wallet.API.V1.Types (
   , PasswordUpdate (..)
   , AccountUpdate (..)
   , NewAccount (..)
+  , NewExternalAccount (..)
   , Update
   , New
   -- * Domain-specific types
@@ -35,14 +36,19 @@ module Cardano.Wallet.API.V1.Types (
   , WalletId (..)
   , WalletOperation (..)
   , SpendingPassword
+  , ExternalWallet (..)
+  , NewExternalWallet (..)
   -- * Addresses
   , AddressValidity (..)
   -- * Accounts
   , Account (..)
   , AccountIndex
+  , ExternalAccount (..)
   -- * Addresses
   , WalletAddress (..)
   , NewAddress (..)
+  , ExternalWalletAddress (..)
+  , NewExternalAddress (..)
   -- * Payments
   , Payment (..)
   , PaymentSource (..)
@@ -51,6 +57,8 @@ module Cardano.Wallet.API.V1.Types (
   , TransactionType (..)
   , TransactionDirection (..)
   , EstimatedFees (..)
+  , TransactionSignature (..)
+  , SignedTransaction (..)
   -- * Updates
   , WalletSoftwareUpdate (..)
   -- * Settings
@@ -460,6 +468,28 @@ instance ToSchema NewWallet where
       & ("operation"        --^ "Create a new wallet or Restore an existing one")
     )
 
+-- | A type modelling the request for a new 'ExternalWallet',
+-- on the mobile client or hardware wallet.
+data NewExternalWallet = NewExternalWallet
+    { newewalAssuranceLevel :: !AssuranceLevel
+    , newewalName           :: !WalletName
+    , newewalOperation      :: !WalletOperation
+    } deriving (Eq, Show, Generic)
+
+deriveJSON Serokell.defaultOptions ''NewExternalWallet
+
+instance Arbitrary NewExternalWallet where
+  arbitrary = NewExternalWallet <$> arbitrary
+                                <*> pure "My external Wallet"
+                                <*> arbitrary
+
+instance ToSchema NewExternalWallet where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "newewal" (\(--^) props -> props
+      & ("assuranceLevel" --^ "Desired assurance level based on the number of confirmations counter of each transaction.")
+      & ("name"           --^ "External Wallet's name")
+      & ("operation"      --^ "Create a new external wallet or Restore an existing one")
+    )
 
 -- | A type modelling the update of an existing wallet.
 data WalletUpdate = WalletUpdate {
@@ -501,6 +531,28 @@ instance Arbitrary Wallet where
   arbitrary = Wallet <$> arbitrary
                      <*> pure "My wallet"
                      <*> arbitrary
+
+-- | An external wallet (mobile client or hardware wallet).
+data ExternalWallet = ExternalWallet
+    { extWalId      :: !WalletId
+    , extWalName    :: !WalletName
+    , extWalBalance :: !(V1 Core.Coin)
+    } deriving (Eq, Ord, Show, Generic)
+
+deriveJSON Serokell.defaultOptions ''ExternalWallet
+
+instance ToSchema ExternalWallet where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "extWal" (\(--^) props -> props
+      & ("id"      --^ "Unique wallet identifier")
+      & ("name"    --^ "Wallet's name")
+      & ("balance" --^ "Current balance, in ADA")
+    )
+
+instance Arbitrary ExternalWallet where
+  arbitrary = ExternalWallet <$> arbitrary
+                             <*> pure "My external wallet"
+                             <*> arbitrary
 
 --------------------------------------------------------------------------------
 -- Addresses
@@ -552,6 +604,34 @@ instance Arbitrary Account where
                       <*> pure "My account"
                       <*> arbitrary
 
+-- | An external wallet 'ExternalAccount'.
+data ExternalAccount = ExternalAccount
+  { accExtIndex     :: !AccountIndex
+  , accExtAddresses :: [V1 Core.Address]  -- should be WalletAddress
+  , accExtAmount    :: !(V1 Core.Coin)
+  , accExtName      :: !Text
+  , accExtWalletId  :: WalletId
+  } deriving (Show, Ord, Eq, Generic)
+
+deriveJSON Serokell.defaultOptions ''ExternalAccount
+
+instance ToSchema ExternalAccount where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "accExt" (\(--^) props -> props
+      & ("index"     --^ "Account's index in external wallet, starting at 0")
+      & ("addresses" --^ "Public addresses pointing to this account")
+      & ("amount"    --^ "Available funds, in ADA")
+      & ("name"      --^ "Account's name")
+      & ("walletId"  --^ "Id of external wallet this account belongs to")
+    )
+
+instance Arbitrary ExternalAccount where
+  arbitrary = ExternalAccount <$> arbitrary
+                              <*> arbitrary
+                              <*> arbitrary
+                              <*> pure "My external account"
+                              <*> arbitrary
+
 data AccountUpdate = AccountUpdate {
     uaccName      :: !Text
   } deriving (Show, Eq, Generic)
@@ -585,6 +665,22 @@ instance ToSchema NewAccount where
       & ("name"             --^ "Account's name")
     )
 
+data NewExternalAccount = NewExternalAccount
+  { neaccName :: !Text
+  } deriving (Show, Eq, Generic)
+
+deriveJSON Serokell.defaultOptions ''NewExternalAccount
+
+instance Arbitrary NewExternalAccount where
+  arbitrary = NewExternalAccount <$> arbitrary
+
+instance ToSchema NewExternalAccount where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "neacc" (\(--^) props -> props
+      & ("name" --^ "External Account's name")
+    )
+
+
 -- | Summary about single address.
 data WalletAddress = WalletAddress
   { addrId            :: !(V1 Core.Address)
@@ -610,6 +706,31 @@ instance Arbitrary WalletAddress where
                             <*> arbitrary
                             <*> arbitrary
 
+-- | Summary about single address in external wallet.
+data ExternalWalletAddress = ExternalWalletAddress
+  { addrExtId            :: !(V1 Core.Address)
+  , addrExtBalance       :: !(V1 Core.Coin)
+  , addrExtUsed          :: !Bool
+  , addrExtChangeAddress :: !Bool
+  } deriving (Show, Eq, Generic)
+
+deriveJSON Serokell.defaultOptions ''ExternalWalletAddress
+
+instance ToSchema ExternalWalletAddress where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "addrExt" (\(--^) props -> props
+      & ("id"            --^ "Actual address in external wallet")
+      & ("balance"       --^ "Associated balance, in ADA")
+      & ("used"          --^ "True if this address has been used")
+      & ("changeAddress" --^ "True if this address stores change from a previous transaction")
+    )
+
+instance Arbitrary ExternalWalletAddress where
+  arbitrary = ExternalWalletAddress <$> arbitrary
+                                    <*> arbitrary
+                                    <*> arbitrary
+                                    <*> arbitrary
+
 data NewAddress = NewAddress
   { newaddrSpendingPassword :: !(Maybe SpendingPassword)
   , newaddrAccountIndex     :: !AccountIndex
@@ -630,6 +751,24 @@ instance Arbitrary NewAddress where
   arbitrary = NewAddress <$> arbitrary
                          <*> arbitrary
                          <*> arbitrary
+
+data NewExternalAddress = NewExternalAddress
+  { neweaddrAccountIndex :: !AccountIndex
+  , neweaddrWalletId     :: !WalletId
+  } deriving (Show, Eq, Generic)
+
+deriveJSON Serokell.defaultOptions ''NewExternalAddress
+
+instance ToSchema NewExternalAddress where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "neweaddr" (\(--^) props -> props
+      & ("accountIndex" --^ "Target account's index to store this address in")
+      & ("walletId"     --^ "Corresponding external wallet identifier")
+    )
+
+instance Arbitrary NewExternalAddress where
+  arbitrary = NewExternalAddress <$> arbitrary
+                                 <*> arbitrary
 
 -- | A type incapsulating a password update request.
 data PasswordUpdate = PasswordUpdate {
@@ -861,6 +1000,43 @@ instance Arbitrary Transaction where
                           <*> arbitrary
                           <*> arbitrary
                           <*> arbitrary
+
+-- | Signature of transaction. We are use it in case of
+-- externally signed transaction (mobile client or hardware wallet).
+newtype TransactionSignature = TransactionSignature Text
+  deriving (Show, Ord, Eq, Generic)
+
+deriveJSON Serokell.defaultOptions ''TransactionSignature
+
+instance ToSchema TransactionSignature where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "txSig" (\(--^) props -> props
+      & ("signature" --^ "Raw signature of new transaction.")
+    )
+
+instance Arbitrary TransactionSignature where
+  arbitrary = TransactionSignature <$> arbitrary
+
+-- | A 'Wallet''s 'SignedTransaction'. It is assumed
+-- that this transaction was signed on the client-side
+-- (mobile client or hardware wallet).
+data SignedTransaction = SignedTransaction
+  { stxTransaction :: !Transaction
+  , stxSignature   :: !TransactionSignature
+  } deriving (Show, Ord, Eq, Generic)
+
+deriveJSON Serokell.defaultOptions ''SignedTransaction
+
+instance ToSchema SignedTransaction where
+  declareNamedSchema =
+    genericSchemaDroppingPrefix "stx" (\(--^) props -> props
+      & ("transaction" --^ "New transaction that wasn't published yet.")
+      & ("signature"   --^ "Signature of this transaction.")
+    )
+
+instance Arbitrary SignedTransaction where
+  arbitrary = SignedTransaction <$> arbitrary
+                                <*> arbitrary
 
 -- | A type representing an upcoming wallet update.
 data WalletSoftwareUpdate = WalletSoftwareUpdate
@@ -1131,9 +1307,12 @@ type family Update (original :: *) :: * where
   Update WalletAddress = () -- read-only
 
 type family New (original :: *) :: * where
-  New Wallet  = NewWallet
-  New Account = NewAccount
-  New WalletAddress = NewAddress
+  New Wallet                = NewWallet
+  New Account               = NewAccount
+  New WalletAddress         = NewAddress
+  New ExternalWallet        = NewExternalWallet
+  New ExternalAccount       = NewExternalAccount
+  New ExternalWalletAddress = NewExternalAddress
 
 type CaptureWalletId = Capture "walletId" WalletId
 

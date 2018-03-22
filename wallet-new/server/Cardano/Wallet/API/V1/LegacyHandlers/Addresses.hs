@@ -24,6 +24,7 @@ handlers
 handlers =  listAddresses
        :<|> newAddress
        :<|> verifyAddress
+       :<|> newExternalAddress
 
 listAddresses
     :: MonadIO m
@@ -58,3 +59,11 @@ verifyAddress address =
             return $ single $ AddressValidity True
         Left _  ->
             return $ single $ AddressValidity False
+
+-- | Creates new address in external wallet.
+newExternalAddress
+    :: (MonadThrow m, V0.MonadWalletLogic ctx m)
+    => NewExternalAddress
+    -> m (WalletResponse WalletAddress)
+newExternalAddress _ =
+    single <$> (liftIO $ generate arbitrary)
