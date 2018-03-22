@@ -26,7 +26,6 @@ import           Pos.Launcher (ConfigurationOptions (..), HasConfigurations, Nod
 import           Pos.Network.CLI (NetworkConfigOpts (..))
 import           Pos.Network.Types (NetworkConfig (..), Topology (..), topologyDequeuePolicy,
                                     topologyEnqueuePolicy, topologyFailurePolicy)
-import           Pos.Ntp.Configuration (NtpConfiguration)
 import           Pos.Txp (txpGlobalSettings)
 import           Pos.Util.CompileInfo (HasCompileInfo, retrieveCompileTimeInfo,
                                        withCompileInfo)
@@ -60,10 +59,9 @@ newRealModeContext
     :: HasConfigurations
     => NodeDBs
     -> ConfigurationOptions
-    -> NtpConfiguration
     -> FilePath
     -> Production (RealModeContext ())
-newRealModeContext dbs confOpts ntpConfig secretKeyPath = do
+newRealModeContext dbs confOpts secretKeyPath = do
     let nodeArgs = NodeArgs {
       behaviorConfigPath = Nothing
     }
@@ -103,7 +101,7 @@ newRealModeContext dbs confOpts ntpConfig secretKeyPath = do
     nodeParams <- getNodeParams loggerName cArgs nodeArgs
     let vssSK = fromJust $ npUserSecret nodeParams ^. usVss
     let gtParams = gtSscParams cArgs vssSK (npBehaviorConfig nodeParams)
-    bracketNodeResources @() nodeParams gtParams ntpConfig txpGlobalSettings initNodeDBs $ \NodeResources{..} ->
+    bracketNodeResources @() nodeParams gtParams txpGlobalSettings initNodeDBs $ \NodeResources{..} ->
         RealModeContext <$> pure dbs
                         <*> pure nrSscState
                         <*> pure nrTxpState
@@ -117,17 +115,16 @@ newRealModeContext dbs confOpts ntpConfig secretKeyPath = do
 walletRunner
     :: (HasConfigurations, HasCompileInfo)
     => ConfigurationOptions
-    -> NtpConfiguration
     -> NodeDBs
     -> FilePath
     -> WalletDB
     -> UberMonad a
     -> IO a
-walletRunner confOpts ntpConfig dbs secretKeyPath ws act = runProduction $ do
+walletRunner confOpts dbs secretKeyPath ws act = runProduction $ do
     wwmc <- WalletWebModeContext <$> pure ws
                                  <*> newTVarIO def
                                  <*> (AddrCIdHashes <$> (newIORef mempty))
-                                 <*> newRealModeContext dbs confOpts ntpConfig secretKeyPath
+                                 <*> newRealModeContext dbs confOpts secretKeyPath
     runReaderT act wwmc
 
 newWalletState :: (MonadIO m, HasConfigurations) => Bool -> FilePath -> m WalletDB
@@ -155,7 +152,7 @@ main = do
     cli@CLI{..} <- getRecord "DBGen"
     let cfg = newConfig cli
 
-    withConfigurations cfg $ \ntpConfig ->
+    withConfigurations cfg $ \_ ->
         withCompileInfo $(retrieveCompileTimeInfo) $ do
             when showStats (showStatsAndExit walletPath)
 
@@ -168,7 +165,7 @@ main = do
             ws   <- newWalletState (isJust addTo) walletPath -- Recreate or not
 
             let generatedWallet = generateWalletDB cli spec
-            walletRunner cfg ntpConfig dbs secretKeyPath ws generatedWallet
+            walletRunner cfg dbs secretKeyPath ws generatedWallet
             closeState ws
 
             showStatsData "after" walletPath
