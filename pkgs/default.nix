@@ -7423,9 +7423,9 @@ inherit (pkgs) mesa;};
            license = stdenv.lib.licenses.mit;
          }) {};
       "cardano-sl-node" = callPackage
-        ({ mkDerivation, base, cardano-sl, cardano-sl-networking
-         , cardano-sl-ssc, cardano-sl-update, cardano-sl-util, cpphs
-         , log-warper, stdenv, universum
+         ({ mkDerivation, base, cardano-sl, cardano-sl-infra
+         , cardano-sl-networking, cardano-sl-ssc, cardano-sl-update
+         , cardano-sl-util, cpphs, log-warper, stdenv, universum
          }:
          mkDerivation {
            pname = "cardano-sl-node";
@@ -7434,8 +7434,9 @@ inherit (pkgs) mesa;};
            isLibrary = false;
            isExecutable = true;
            executableHaskellDepends = [
-             base cardano-sl cardano-sl-networking cardano-sl-ssc
-             cardano-sl-update cardano-sl-util log-warper universum
+             base cardano-sl cardano-sl-infra cardano-sl-networking
+             cardano-sl-ssc cardano-sl-update cardano-sl-util log-warper
+             universum
            ];
            executableToolDepends = [ cpphs ];
            doHaddock = false;
