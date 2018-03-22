@@ -165,7 +165,7 @@ testV1Context =
 -- The general consensus, after discussing this with the team, is that we can be moderately safe.
 spec :: Spec
 spec = withCompileInfo def $ do
-    withDefConfigurations $ \_ -> do
+    withDefConfigurations $ do
       xdescribe "Servant API Properties" $ do
         it "V0 API follows best practices & is RESTful abiding" $ do
           withServantServer (Proxy @V0.API) (v0Server (D.diffusion D.dummyDiffusionLayer)) $ \burl ->
